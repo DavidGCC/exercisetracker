@@ -47,7 +47,8 @@ app.get("/api/users", async (req, res) => {
 
 // CREATE EXERCISE
 app.post("/api/users/:id/exercises", async (req, res) => {
-    const { ":_id": id, description, duration } = req.body;
+    const { description, duration } = req.body;
+    const id = req.params.id;
     try {
         if (id && description && duration) {
             const date = req.body.date || new Date().toISOString().split("T")[0];
@@ -78,7 +79,6 @@ app.get("/api/users/:id/logs", async (req, res) => {
     let { from, to, limit } = req.query;
     let text = "SELECT u.userid, u.username, e.description, e.duration, e.date FROM users u INNER JOIN exercises e ON u.userid = e.userid WHERE u.userid = $1";
     let values = [id];
-    console.log(to);
     try {
         if (from) {
             to = to || new Date().toISOString().split("T")[0];
