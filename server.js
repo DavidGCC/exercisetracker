@@ -23,7 +23,7 @@ app.get('/', (req, res) => {
 app.post("/api/users", async (req, res) => {
     try {
         const username = req.body.username;
-        const dbRes = await pool.query("INSERT INTO Users (username) VALUES($1) RETURNING userId as _id, username", [username]);
+        const dbRes = await pool.query("INSERT INTO Users (username) VALUES($1) RETURNING userId::text as _id, username", [username]);
         res.json(dbRes.rows[0]);
     } catch (err) {
         res.json({
@@ -36,7 +36,7 @@ app.post("/api/users", async (req, res) => {
 // GET USERS
 app.get("/api/users", async (req, res) => {
     try {
-        const users = await pool.query("SELECT userId as _id, username FROM Users");
+        const users = await pool.query("SELECT userId::text as _id, username FROM Users");
         res.json(users.rows);
     } catch (err) {
         res.json({
@@ -51,9 +51,15 @@ app.post("/api/users/:id/exercises", async (req, res) => {
     try {
         if (id && description && duration) {
             const date = req.body.date || new Date().toISOString().split("T")[0];
-            await pool.query("INSERT INTO exercises (userid, description, duration, date) VALUES ($1, $2, $3, $4::date)", [id, description, duration, date]);
-            const dbRes = await pool.query("SELECT u.userid, u.username, e.description, e.duration, e.date FROM users u INNER JOIN exercises e ON u.userid = e.userid WHERE u.userid = $1", [id]);
-            res.json(formUser(dbRes.rows));
+            const exerciseResult = await pool.query("INSERT INTO exercises (userid, description, duration, date) VALUES ($1, $2, $3, $4::date) RETURNING description, duration, date", [id, description, duration, date]);
+            const user = await pool.query("SELECT userid::text as _id, username FROM users WHERE userid = $1", [id]);
+            res.json(
+                {
+                    ...user.rows[0],
+                    ...exerciseResult.rows[0],
+                    date: new Date(exerciseResult.rows[0].date).toDateString()
+                }
+            )
         } else {
             res.json({
                 error: "id, duration and description is required"
