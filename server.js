@@ -69,10 +69,27 @@ app.post("/api/users/:id/exercises", async (req, res) => {
 
 app.get("/api/users/:id/logs", async (req, res) => {
     const id = req.params.id;
+    let { from, to, limit } = req.query;
+    let text = "SELECT u.userid, u.username, e.description, e.duration, e.date FROM users u INNER JOIN exercises e ON u.userid = e.userid WHERE u.userid = $1";
+    let values = [id];
+    console.log(to);
     try {
-            const dbRes = await pool.query("SELECT u.userid, u.username, e.description, e.duration, e.date FROM users u INNER JOIN exercises e ON u.userid = e.userid WHERE u.userid = $1", [id]);
-            res.json(formUser(dbRes.rows));
+        if (from) {
+            to = to || new Date().toISOString().split("T")[0];
+            text += " AND e.date BETWEEN $2 AND $3";
+            values = [...values, from, to];
+        } else if (to) {
+            text += " AND e.date <= $2";
+            values = [...values, to];
+        }
+        if (limit) {
+            values = [...values, limit];
+            text += ` LIMIT \$${values.length}`;
+        }
+        const dbRes = await pool.query(text, values);
+        res.json(formUser(dbRes.rows));
     } catch (err) {
+        console.log(err);
         res.json({
             error: err
         })
