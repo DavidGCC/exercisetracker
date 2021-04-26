@@ -23,7 +23,7 @@ app.get('/', (req, res) => {
 app.post("/api/users", async (req, res) => {
     try {
         const username = req.body.username;
-        const dbRes = await pool.query("INSERT INTO Users (username) VALUES($1) RETURNING *", [username]);
+        const dbRes = await pool.query("INSERT INTO Users (username) VALUES($1) RETURNING userId as _id, username", [username]);
         res.json(dbRes.rows[0]);
     } catch (err) {
         res.json({
@@ -36,7 +36,7 @@ app.post("/api/users", async (req, res) => {
 // GET USERS
 app.get("/api/users", async (req, res) => {
     try {
-        const users = await pool.query("SELECT * FROM Users");
+        const users = await pool.query("SELECT userId as _id, username FROM Users");
         res.json(users.rows);
     } catch (err) {
         res.json({
@@ -52,7 +52,7 @@ app.post("/api/users/:id/exercises", async (req, res) => {
         if (id && description && duration) {
             const date = req.body.date || new Date().toISOString().split("T")[0];
             await pool.query("INSERT INTO exercises (userid, description, duration, date) VALUES ($1, $2, $3, $4::date)", [id, description, duration, date]);
-            const dbRes = await pool.query("SELECT * FROM users u INNER JOIN exercises e ON u.userid = e.userid WHERE u.userid = $1", [id]);
+            const dbRes = await pool.query("SELECT u.userid, u.username, e.description, e.duration, e.date FROM users u INNER JOIN exercises e ON u.userid = e.userid WHERE u.userid = $1", [id]);
             res.json(formUser(dbRes.rows));
         } else {
             res.json({
@@ -67,10 +67,10 @@ app.post("/api/users/:id/exercises", async (req, res) => {
     }
 });
 
-app.get("/api/users/:id/exercises", async (req, res) => {
+app.get("/api/users/:id/logs", async (req, res) => {
     const id = req.params.id;
     try {
-            const dbRes = await pool.query("SELECT * FROM users u INNER JOIN exercises e ON u.userid = e.userid WHERE u.userid = $1", [id]);
+            const dbRes = await pool.query("SELECT u.userid, u.username, e.description, e.duration, e.date FROM users u INNER JOIN exercises e ON u.userid = e.userid WHERE u.userid = $1", [id]);
             res.json(formUser(dbRes.rows));
     } catch (err) {
         res.json({
